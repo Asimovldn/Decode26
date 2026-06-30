@@ -421,6 +421,8 @@ class ForwardVelocityTuner extends OpMode {
                 double currentVelocity = Math.abs(follower.poseTracker.getLocalizer().getVelocity().getX());
                 velocities.add(currentVelocity);
                 velocities.remove(0);
+                telemetryM.debug(follower.getPose().getX());
+                telemetryM.update(telemetry);
             }
         } else {
             stopRobot();
@@ -1769,7 +1771,6 @@ class Drawing {
 
         int size = poseTracker.getXPositionsArray().length;
         for (int i = 0; i < size - 1; i++) {
-
             panelsField.moveCursor(poseTracker.getXPositionsArray()[i], poseTracker.getYPositionsArray()[i]);
             panelsField.line(poseTracker.getXPositionsArray()[i + 1], poseTracker.getYPositionsArray()[i + 1]);
         }
