@@ -3,17 +3,19 @@ package org.firstinspires.ftc.teamcode.Math;
 import com.pedropathing.control.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class PIDF {
+public class PIDF implements Controller {
     private PIDFCoefficients coefficients;
     private double error, target, current;
     private double lastError = 0, integral = 0, derivative = 0;
     private double correction = 0;
-    private List<Supplier<Double>> errors;
+    private ArrayList<Supplier<Double>> errors;
     private int average;
     private double kA;
+    private double avgCorrection;
 
     /**
      * PID simples com calculo de erro e reset de Integral.
@@ -22,6 +24,7 @@ public class PIDF {
     public PIDF(PIDFCoefficients PIDFcoefficients) {
         coefficients = PIDFcoefficients;
         kA = 0;
+        errors = new ArrayList<>();
     }
 
     /**
@@ -32,6 +35,7 @@ public class PIDF {
     public PIDF(PIDFCoefficients PIDFcoefficients, double kAvg) {
         coefficients = PIDFcoefficients;
         kA = kAvg;
+        errors = new ArrayList<>();
     }
 
     public int getAverage() {
@@ -45,31 +49,42 @@ public class PIDF {
             avg += errors.get(i).get();
         }
 
-        avg /= errors.size();
+        if (!errors.isEmpty()) {
+            avg /= errors.size();
+        } else {
+            avg = 0;
+        }
 
         return avg;
     }
 
     /**
      * Calcula o PIDF
-     * @param curr valor atual
-     * @param t valor alvo
      * @return
      */
-    public double calculate(double curr, double t) {
-        double currentError = t - curr;
-        target = t;
-        current = curr;
+    public double calculate(double... args) {
+        double currentError = args[0] - args[1];
+        target = args[0];
+        current = args[1];
 
         average = getAverage();
         if (average <= 7 && average >= -7) {
             integral = 0;
         }
 
+        avgCorrection = LazyMath.lerp(avgCorrection, (average * kA), 0.8);
+        if ((avgCorrection - average * kA) < 0.2) {
+            avgCorrection = average * kA;
+        }
+
         integral += currentError;
         derivative = currentError - lastError;
-        correction = (currentError * coefficients.P) + (integral * coefficients.I) + (derivative * coefficients.D) + (target * coefficients.F) + (average * kA);
+        correction = (currentError * coefficients.P) + (integral * coefficients.I) + (derivative * coefficients.D) + (target * coefficients.F) + avgCorrection;
 
         return correction;
+    }
+
+    public void editCoefficients(PIDFCoefficients newCoefficients) {
+        coefficients = newCoefficients;
     }
 }

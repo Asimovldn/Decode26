@@ -50,6 +50,7 @@ public class Intake {
 
     public enum State {
         INTAKE,
+        SLOWINTAKE,
         OUTTAKE,
         HOLD
     }
@@ -65,25 +66,36 @@ public class Intake {
     public double getTarget() { return target; }
     public double getCurrent() { return current; }
 
-    public void update() {
+    public Intake update() {
         current = motor.getVelocity(AngleUnit.DEGREES);
 
         if (state == State.INTAKE) {
             target = 360 * 4;
+        } else if (state == State.SLOWINTAKE) {
+            target = 360;
         } else if (state == State.OUTTAKE) {
             target = -360 * 4;
         } else {
             target = 0;
         }
 
-        motor.setVelocity(pidIntake.calculate(getCurrent(), getTarget()), AngleUnit.DEGREES);
+        motor.setVelocity(target + pidIntake.calculate(getCurrent(), getTarget()), AngleUnit.DEGREES);
+        return this;
     }
 
     public void usingGamepad(Gamepad gamepad2) {
         current = motor.getVelocity(AngleUnit.DEGREES);
 
-        target = 360 * -gamepad2.right_stick_y * 3;
+        target = 360 * -gamepad2.right_stick_y * 1.8;
 
-        motor.setVelocity(pidIntake.calculate(current, target), AngleUnit.DEGREES);
+        motor.setVelocity(target + pidIntake.calculate(current, target), AngleUnit.DEGREES);
+    }
+
+    public void usingTrigger(Gamepad gamepad2) {
+        current = motor.getVelocity(AngleUnit.DEGREES);
+
+        target = 360 * -gamepad2.left_trigger * 0.5;
+
+        motor.setVelocity(target + pidIntake.calculate(current, target), AngleUnit.DEGREES);
     }
 }

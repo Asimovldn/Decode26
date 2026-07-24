@@ -3,16 +3,17 @@ package org.firstinspires.ftc.teamcode.Math;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class PID {
+public class PID implements Controller {
     private PIDCoefficients coefficients;
     private Supplier<Double> error;
     private double lastError = 0, integral = 0, derivative = 0;
     private double correction = 0;
-    private List<Supplier<Double>> errors;
+    private ArrayList<Supplier<Double>> errors;
     private int average;
     private double kA;
 
@@ -23,6 +24,7 @@ public class PID {
     public PID(PIDCoefficients PIDcoefficients) {
         coefficients = PIDcoefficients;
         kA = 0;
+        errors = new ArrayList<>();
     }
 
     /**
@@ -33,10 +35,19 @@ public class PID {
     public PID(PIDCoefficients PIDcoefficients, double kAvg) {
         coefficients = PIDcoefficients;
         kA = kAvg;
+        errors = new ArrayList<>();
     }
 
     public void setError(Supplier<Double> newError) {
         error = newError;
+    }
+
+    public void setError(double newError) {
+        setError(() -> newError);
+    }
+
+    public void setError(double t, double curr) {
+        setError(() -> t - curr);
     }
 
     public int getAverage() {
@@ -50,12 +61,16 @@ public class PID {
             avg += errors.get(i).get();
         }
 
-        avg /= errors.size();
+        if (!errors.isEmpty()) {
+            avg /= errors.size();
+        } else {
+            avg = 0;
+        }
 
         return avg;
     }
 
-    public double calculate() {
+    public double calculate(double... args) {
         double currentError = error.get();
         errors.add(error);
 
@@ -69,5 +84,9 @@ public class PID {
         correction = (currentError * coefficients.p) + (integral * coefficients.i) + (derivative * coefficients.d) + (average * kA);
 
         return correction;
+    }
+
+    public void editCoefficients(PIDCoefficients newCoefficients) {
+        coefficients = newCoefficients;
     }
 }

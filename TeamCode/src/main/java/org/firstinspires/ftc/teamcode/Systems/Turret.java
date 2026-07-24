@@ -5,6 +5,7 @@ import android.os.Process;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.configurables.annotations.IgnoreConfigurable;
 import com.bylazar.telemetry.TelemetryManager;
+import com.pedropathing.control.PIDFCoefficients;
 import com.pedropathing.geometry.PedroCoordinates;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -13,6 +14,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.teamcode.Math.LazyMath;
+import org.firstinspires.ftc.teamcode.Math.PIDF;
 import org.openftc.apriltag.AprilTagDetection;
 
 import java.util.concurrent.TimeUnit;
@@ -33,6 +36,9 @@ public class Turret {
 
     @IgnoreConfigurable
     private double lastErr = 0;
+
+    @IgnoreConfigurable
+    private PIDF pidTurret;
 
     @IgnoreConfigurable
     private double angLastErr = 0;
@@ -61,7 +67,7 @@ public class Turret {
         public static final double motorTeeth = 20;
         public static final double angulatorTeeth = 100;
 
-        public static double ANGULATOR_MAX_POWER = 0.4;
+        public static double ANGULATOR_MAX_POWER = 0.6;
         public static double angulatorTolerance = 1.5;
 
         // Clicks Per Degree
@@ -77,6 +83,8 @@ public class Turret {
         angulator.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         adjustPDValues(0.1, 0.08);
+
+        pidTurret = new PIDF(new PIDFCoefficients(kp.get(), 0, kp.get(), 0.01));
     }
 
     /**
@@ -87,6 +95,8 @@ public class Turret {
     public void adjustPDValues(double kP, double kD) {
         if (kP != -1) TurretConstants.kP = kP;
         if (kD != -1) TurretConstants.kD = kD;
+
+        pidTurret.editCoefficients(new PIDFCoefficients(kp.get(), 0, kd.get(), 0.01));
     }
 
     public Supplier<Double> kp = () -> TurretConstants.kP;
@@ -104,15 +114,12 @@ public class Turret {
         );
 
         double err = target - currentAngulatorAngle;
-        double p = err * kp.get();
-        double d = 0;
 
-        if (dt > 0) d = ((err - angLastErr) / dt) * kd.get();
 
         if (Math.abs(err) < TurretConstants.angulatorTolerance) {
             power = 0;
         } else {
-            power = Range.clip(p + d, -TurretConstants.ANGULATOR_MAX_POWER, TurretConstants.ANGULATOR_MAX_POWER);
+            power = Range.clip(pidTurret.calculate(currentAngulatorAngle, target), -TurretConstants.ANGULATOR_MAX_POWER, TurretConstants.ANGULATOR_MAX_POWER);
         }
 
         return power;
@@ -136,13 +143,15 @@ public class Turret {
 
         if (dt > 0) d = ((err - lastErr) / dt) * kd.get();
 
+        double simpleErr = LazyMath.simplify(err, -360, 360);
+
         if (Math.abs(err) < TurretConstants.angleTolerance) {
             power = 0;
         } else {
             power = Range.clip(p + d, -TurretConstants.MAX_POWER, TurretConstants.MAX_POWER);
         }
 
-        motor.setPower(power);
+        motor.setVelocity(power * 360);
         angulator.setPower(calculateAngulator(dt, currentID, pose));
     }
 

@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.TeleOpModes;
 
-import static org.firstinspires.ftc.teamcode.TeleOpModes.MovementTest.follower;
-
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
@@ -9,14 +7,13 @@ import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Systems.ControlHandler;
 import org.firstinspires.ftc.teamcode.Systems.Intake;
 import org.firstinspires.ftc.teamcode.Systems.Shooter;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@TeleOp
-public class SimpleTeleOp extends LinearOpMode  {
+@TeleOp(name="Usa Esse Aqui")
+public class SlowShooter extends LinearOpMode  {
     private Follower follower;
     private Intake intake;
     private Shooter shooter;
@@ -39,6 +36,7 @@ public class SimpleTeleOp extends LinearOpMode  {
 
         follower.activateAllPIDFs();
         follower.setStartingPose(new Pose(72, 72));
+        shooter.activateSlowMode();
 
         gamepad1Control = new ControlHandler(hardwareMap, gamepad1);
         gamepad2Control = new ControlHandler(hardwareMap, gamepad2);
@@ -66,6 +64,12 @@ public class SimpleTeleOp extends LinearOpMode  {
             follower.updatePose();
             follower.setTeleOpDrive(-gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x, robotCentric);
             follower.update();
+
+            if (follower.getPose().getX() < 62) {
+                shooter.setMultiplier(1.3);
+            } else {
+                shooter.setMultiplier(1);
+            }
 
             gamepad1Control.update();
             gamepad2Control.update();

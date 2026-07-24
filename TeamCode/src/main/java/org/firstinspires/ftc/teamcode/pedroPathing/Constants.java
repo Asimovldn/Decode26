@@ -34,9 +34,9 @@ public class Constants {
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 0.4, 0.4);
 
     public static MecanumConstants driveConstants = new MecanumConstants()
-            .maxPower(0.9)
-            .rightRearMotorDirection(DcMotorSimple.Direction.REVERSE)
-            .leftRearMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .maxPower(0.98)
+            .rightFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .leftFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
             .xVelocity(57.189)
             .yVelocity(27.1771);
 
