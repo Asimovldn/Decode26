@@ -48,7 +48,7 @@ public class Framework implements Controller {
             return bruteStrength * Math.pow(LazyMath.lerp(1, 20, LazyMath.simplify(Math.abs(err), 0, max)), 2) * Math.signum(err);
         }
 
-        return 0;
+        return 0.0;
     }
 
     public void updateGains(double target, double current, double avg, double accumulative) {
