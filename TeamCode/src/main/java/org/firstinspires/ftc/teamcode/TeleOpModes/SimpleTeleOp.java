@@ -10,10 +10,13 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Math.LazyMath;
 import org.firstinspires.ftc.teamcode.Systems.ControlHandler;
 import org.firstinspires.ftc.teamcode.Systems.Intake;
 import org.firstinspires.ftc.teamcode.Systems.Shooter;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+
+import java.util.ArrayList;
 
 @TeleOp
 public class SimpleTeleOp extends LinearOpMode  {
@@ -64,7 +67,20 @@ public class SimpleTeleOp extends LinearOpMode  {
 
         while (opModeIsActive()) {
             follower.updatePose();
-            follower.setTeleOpDrive(-gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x, robotCentric);
+
+            ArrayList<Double> s = new ArrayList<>();
+            s.add(-90.0); s.add(0.0); s.add(90.0); s.add(180.0); s.add(-180.0);
+
+            double heading = Math.toDegrees(follower.getHeading());
+
+            double rot = 0;
+            if (-gamepad1.right_stick_x < 0.1 && (heading - LazyMath.closest(heading, s) < 5)) {
+                rot = 0.3 * Math.signum(heading - LazyMath.closest(heading, s));
+            } else {
+                rot = -gamepad1.right_stick_x;
+            }
+
+            follower.setTeleOpDrive(-gamepad1.left_stick_y, -gamepad1.left_stick_x, rot, robotCentric);
             follower.update();
 
             gamepad1Control.update();

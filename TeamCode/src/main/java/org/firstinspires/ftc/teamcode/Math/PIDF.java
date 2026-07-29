@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Math;
 import com.pedropathing.control.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -10,10 +11,10 @@ import java.util.function.Supplier;
 public class PIDF implements Controller {
     private PIDFCoefficients coefficients;
     private double error, target, current;
-    private double lastError = 0, integral = 0, derivative = 0;
+    public double lastError = 0, integral = 0, derivative = 0;
     private double correction = 0;
     private ArrayList<Supplier<Double>> errors;
-    private int average;
+    private int average, memorySize;
     private double kA;
     private double avgCorrection;
 
@@ -25,6 +26,8 @@ public class PIDF implements Controller {
         coefficients = PIDFcoefficients;
         kA = 0;
         errors = new ArrayList<>();
+
+        memorySize = 10;
     }
 
     /**
@@ -38,11 +41,24 @@ public class PIDF implements Controller {
         errors = new ArrayList<>();
     }
 
+    public void setMemorySize(int size) {
+        memorySize = size;
+    }
+
+    public void useAsDerivative(double x) {
+        derivative = x;
+    }
+
+    public void useAsIntegral(double x) {
+        integral = x;
+    }
+
+
     public int getAverage() {
         int avg = 0;
 
-        if (errors.size() > 9) {
-            errors.remove(errors.size() - 1);
+        if (errors.size() > memorySize) {
+            errors.remove(0);
         }
 
         for (int i = 0; i < (errors.size() - 1); i++) {
@@ -56,6 +72,25 @@ public class PIDF implements Controller {
         }
 
         return avg;
+    }
+
+    public double getAccumulative() {
+        ArrayList<Double> acm = new ArrayList<>();
+
+        for (Supplier<Double> err : errors) {
+            acm.add(err.get() * Math.signum(err.get()));
+        }
+
+        return LazyMath.average(acm);
+    }
+
+    public ArrayList<Double> getErrors() {
+        ArrayList<Double> errs = new ArrayList<>();
+        errors.forEach((Supplier<Double> err) -> {
+            errs.add(err.get());
+        });
+
+        return errs;
     }
 
     /**

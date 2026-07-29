@@ -4,6 +4,7 @@ public class StorageUtils {
     public enum Position {
         INTAKE,
         SHOOTER,
-        BACKUP
+        BACKUP,
+        BLANK
     }
 }

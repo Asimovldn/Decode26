@@ -11,10 +11,10 @@ import java.util.function.Supplier;
 public class PID implements Controller {
     private PIDCoefficients coefficients;
     private Supplier<Double> error;
-    private double lastError = 0, integral = 0, derivative = 0;
+    public double lastError = 0, integral = 0, derivative = 0;
     private double correction = 0;
     private ArrayList<Supplier<Double>> errors;
-    private int average;
+    private int average, memorySize;
     private double kA;
 
     /**
@@ -25,6 +25,12 @@ public class PID implements Controller {
         coefficients = PIDcoefficients;
         kA = 0;
         errors = new ArrayList<>();
+
+        memorySize = 10;
+    }
+
+    public void setMemorySize(int size) {
+        memorySize = size;
     }
 
     /**
@@ -53,21 +59,29 @@ public class PID implements Controller {
     public int getAverage() {
         int avg = 0;
 
-        if (errors.size() > 9) {
-            errors.remove(errors.size() - 1);
+        if (errors.size() > memorySize) {
+            errors.remove(0);
         }
 
-        for (int i = 0; i < (errors.size() - 1); i++) {
-            avg += errors.get(i).get();
+        return (int) LazyMath.averageSupplier(errors);
+    }
+
+    public double getAccumulative() {
+        ArrayList<Double> acm = new ArrayList<Double>();
+
+        for (Supplier<Double> err : errors) {
+            acm.add(Math.abs(err.get()));
         }
 
-        if (!errors.isEmpty()) {
-            avg /= errors.size();
-        } else {
-            avg = 0;
-        }
+        return LazyMath.average(acm);
+    }
 
-        return avg;
+    public void useAsDerivative(double x) {
+        derivative = x;
+    }
+
+    public void useAsIntegral(double x) {
+        integral = x;
     }
 
     public double calculate(double... args) {
