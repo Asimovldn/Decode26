@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.Math.PID;
 import org.firstinspires.ftc.teamcode.Math.PIDF;
 
@@ -20,13 +21,16 @@ public class Intake {
     private PIDF pidIntake;
     private State state;
     private double target, current;
+    private boolean wasIntaked, detect;
+
+    private Storage storage;
 
     public Intake(HardwareMap hm, Follower follower) {
         motor = hm.get(DcMotorEx.class, "intake");
         drive = follower;
         mecanum = (Mecanum) drive.drivetrain;
 
-        pidIntake = new PIDF(new PIDFCoefficients(1.1, 0.01, 0.7, 0.1), 0.005);
+        pidIntake = new PIDF(new PIDFCoefficients(0.3, 0.005, 0.1, 0.01));
     }
 
     public Intake(HardwareMap hm, Shooter shooter, Follower follower) {
@@ -39,8 +43,21 @@ public class Intake {
         shootingSystem = Outtake.TURRET;
     }
 
+    public Intake(HardwareMap hm, Storage storage, Follower follower) {
+        this(hm, follower);
+        this.storage = storage;
+    }
+
     public State getState() {
         return state;
+    }
+
+    public boolean intaked() {
+       detect = storage.readingBall(); // reach for camera readings here.
+       boolean intaked = detect && !wasIntaked;
+       wasIntaked = detect;
+
+       return intaked;
     }
 
     public enum Outtake {
@@ -66,35 +83,31 @@ public class Intake {
     public double getTarget() { return target; }
     public double getCurrent() { return current; }
 
+    public double getVelocity() {
+        return Math.abs(motor.getVelocity());
+    }
+
+    public double getCorrente() {
+        return motor.getCurrent(CurrentUnit.AMPS);
+    }
+
     public Intake update() {
         current = motor.getVelocity(AngleUnit.DEGREES);
 
-        if (state == State.INTAKE) {
-            target = 360 * 4;
-        } else if (state == State.SLOWINTAKE) {
-            target = 360;
-        } else if (state == State.OUTTAKE) {
-            target = -360 * 4;
-        } else {
-            target = 0;
-        }
-
-        motor.setVelocity(target + pidIntake.calculate(getCurrent(), getTarget()), AngleUnit.DEGREES);
+        motor.setVelocity(target + pidIntake.calculate(target, current), AngleUnit.DEGREES);
         return this;
     }
 
     public void usingGamepad(Gamepad gamepad2) {
         current = motor.getVelocity(AngleUnit.DEGREES);
 
-        target = 360 * -gamepad2.right_stick_y * 1.8;
-
-        motor.setVelocity(target + pidIntake.calculate(current, target), AngleUnit.DEGREES);
+        target = 360 * -gamepad2.right_stick_y * 1;
     }
 
     public void usingTrigger(Gamepad gamepad2) {
         current = motor.getVelocity(AngleUnit.DEGREES);
 
-        target = 360 * -gamepad2.left_trigger * 0.5;
+        target = 360 * Math.pow(gamepad2.left_trigger, 2);
 
         motor.setVelocity(target + pidIntake.calculate(current, target), AngleUnit.DEGREES);
     }

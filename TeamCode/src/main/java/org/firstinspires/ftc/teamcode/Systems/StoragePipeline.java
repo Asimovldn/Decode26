@@ -101,4 +101,8 @@ public class StoragePipeline extends OpenCvPipeline {
             return ARTIFACT.NONE;
         }
     }
+
+    public boolean readingBall() {
+        return getAreaState() == ARTIFACT.PURPLE || getAreaState() == ARTIFACT.GREEN;
+    }
 }

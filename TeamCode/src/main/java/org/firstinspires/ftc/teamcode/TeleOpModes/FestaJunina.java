@@ -45,7 +45,7 @@ public class FestaJunina extends LinearOpMode {
         drive = (Mecanum) follower.drivetrain;
 
         intake = new Intake(hardwareMap, follower);
-        shooter = new Shooter(hardwareMap, follower, intake);
+        shooter = new Shooter(hardwareMap, follower, intake, true);
 
         shooter.setMultiplier(1.2);
 

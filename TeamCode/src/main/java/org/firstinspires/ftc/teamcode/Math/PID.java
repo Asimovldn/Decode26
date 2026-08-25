@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Math;
 
+import com.pedropathing.control.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 
 import java.lang.reflect.Array;
@@ -14,8 +15,10 @@ public class PID implements Controller {
     public double lastError = 0, integral = 0, derivative = 0;
     private double correction = 0;
     private ArrayList<Supplier<Double>> errors;
+    private ArrayList<Double> outputs = new ArrayList<>();
     private int average, memorySize;
-    private double kA;
+    private double kA, maxOutput, minOutput;
+    private boolean getNormalized = false;
 
     /**
      * PID simples com calculo de erro e reset de Integral.
@@ -27,6 +30,15 @@ public class PID implements Controller {
         errors = new ArrayList<>();
 
         memorySize = 10;
+    }
+
+    public static PID fromPIDF(PIDF pidf) {
+        PIDFCoefficients coeff = pidf.getCoefficients();
+        return new PID(new PIDCoefficients(
+                coeff.P,
+                coeff.I,
+                coeff.D
+        ));
     }
 
     public void setMemorySize(int size) {
@@ -66,6 +78,15 @@ public class PID implements Controller {
         return (int) LazyMath.averageSupplier(errors);
     }
 
+    public void normalize() {
+        getNormalized = true;
+    }
+
+    public void setRange(double min, double max) {
+        minOutput = min;
+        maxOutput = max;
+    }
+
     public double getAccumulative() {
         ArrayList<Double> acm = new ArrayList<Double>();
 
@@ -84,9 +105,30 @@ public class PID implements Controller {
         integral = x;
     }
 
+    /**
+     * Do not use ...args; Consider addError() instead.
+     * @param args
+     * @return
+     */
     public double calculate(double... args) {
         double currentError = error.get();
         errors.add(error);
+
+        if (errors.size() > memorySize) {
+            errors.remove(0);
+        }
+
+        if (outputs.size() > memorySize) {
+            outputs.remove(0);
+        }
+
+        if (maxOutput < outputs.get(outputs.size() - 1)) {
+            maxOutput = outputs.get(outputs.size() - 1);
+        }
+
+        if (minOutput > outputs.get(outputs.size() - 1)) {
+            minOutput = outputs.get(outputs.size() - 1);
+        }
 
         average = getAverage();
         if (average <= 7 && average >= -7) {
@@ -96,6 +138,14 @@ public class PID implements Controller {
         integral += currentError;
         derivative = currentError - lastError;
         correction = (currentError * coefficients.p) + (integral * coefficients.i) + (derivative * coefficients.d) + (average * kA);
+
+        lastError = error.get();
+
+        outputs.add(correction);
+
+        if (getNormalized) {
+            correction /= maxOutput;
+        }
 
         return correction;
     }

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.TeleOpModes;
 
+import android.util.Log;
+
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
@@ -10,16 +12,21 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.teamcode.Systems.ControlHandler;
 import org.firstinspires.ftc.teamcode.Systems.Intake;
 import org.firstinspires.ftc.teamcode.Systems.Shooter;
+import org.firstinspires.ftc.teamcode.Systems.Storage;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @TeleOp(name="Usa Esse Aqui")
 public class SlowShooter extends LinearOpMode  {
+    private static final Logger log = LoggerFactory.getLogger(SlowShooter.class);
     private Follower follower;
     private Intake intake;
     private Shooter shooter;
     private ControlHandler gamepad1Control, gamepad2Control;
     private TelemetryManager telemetryM;
     private boolean robotCentric, triggerBased;
+    private Storage storage;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -32,11 +39,13 @@ public class SlowShooter extends LinearOpMode  {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         intake = new Intake(hardwareMap, follower);
-        shooter = new Shooter(hardwareMap, follower, intake);
+        shooter = new Shooter(hardwareMap, follower, intake, false);
+
 
         follower.activateAllPIDFs();
         follower.setStartingPose(new Pose(72, 72));
         shooter.activateSlowMode();
+
 
         gamepad1Control = new ControlHandler(hardwareMap, gamepad1);
         gamepad2Control = new ControlHandler(hardwareMap, gamepad2);
@@ -52,8 +61,10 @@ public class SlowShooter extends LinearOpMode  {
             telemetryM.update(telemetry);
         }
 
-        gamepad2Control.Add(ControlHandler.Buttons.X, shooter::switchMultiplier);
-        gamepad2Control.Add(ControlHandler.Buttons.A, shooter::switchServo);
+        gamepad2Control.Add(ControlHandler.Buttons.X, shooter::switchMultiplier)
+                        .onPressed();
+        gamepad2Control.Add(ControlHandler.Buttons.A, shooter::switchServo)
+                        .onPressed();
 
         waitForStart();
 
@@ -65,12 +76,6 @@ public class SlowShooter extends LinearOpMode  {
             follower.setTeleOpDrive(-gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x, robotCentric);
             follower.update();
 
-            if (follower.getPose().getX() < 62) {
-                shooter.setMultiplier(1.3);
-            } else {
-                shooter.setMultiplier(1);
-            }
-
             gamepad1Control.update();
             gamepad2Control.update();
 
@@ -78,6 +83,10 @@ public class SlowShooter extends LinearOpMode  {
             telemetryM.debug("Current Shooter Force: ", shooter.getMultiplier());
             telemetryM.debug("Current Shooter Speed: ", shooter.getVelocity());
             telemetryM.debug("Current Shooter PIDF: ", shooter.calculatePIDF());
+
+            if (shooter.getVelocity() > 1000) {
+                gamepad2Control.vibrate(200);
+            }
 
             shooter.usingGamepad(gamepad2);
             intake.usingGamepad(gamepad2);

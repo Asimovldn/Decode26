@@ -18,7 +18,8 @@ public class LazyMath {
      * @return normalized t between [nA, nB]
      */
     public static double normalize(double t, double rA, double rB, double nA, double nB) {
-        return nA + ( ( (t - rA) * (nB - nA) ) / rB - rA );
+        return nA + (((t - rA) * (nB - nA) ) / rB - rA);
+        // (e(t) - e_min) / (e_max - e_min)
     }
 
     /**
@@ -93,6 +94,11 @@ public class LazyMath {
         return v;
     }
 
+    /**
+        Transforms a number {@code x} that is {@code 0 < x < 10} to {@code 0 < x * 10 < 100};
+        This helps with transforming decimate numbers to more comparable numbers. (a.k.a: 1.25 -> 12);
+     */
+
     public static double averageSupplier(ArrayList<Supplier<Double>> l) {
         if (l.isEmpty()) return 0.0;
         int avg = 0;
@@ -109,7 +115,7 @@ public class LazyMath {
     }
 
     public static double abs(double x) {
-        return x * Math.signum(x);
+        return Math.sqrt(Math.pow(x, 2));
     }
 
     public static double median(double min, double max) {
@@ -137,9 +143,17 @@ public class LazyMath {
         return Math.sqrt(variance);
     }
 
-    public static double normalizedVariance(ArrayList<Double> values, double scale) {
+    public static double saturation(double x, double gain) {
+        return (1 - Math.exp(-gain * x));
+    }
+
+    public static double tanh(double x, double gain) {
+        return Math.tanh(gain * x);
+    }
+
+    public static double normalizedVariance(ArrayList<Double> values, double scale, double min, double max) {
         if (values.isEmpty() || scale == 0) return 0;
 
-        return clamp(variance(values) / Math.abs(scale), 0, 1);
+        return clamp(variance(values) / Math.abs(scale), min, max);
     }
 }

@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import static com.pedropathing.math.MathFunctions.getSmallestAngleDifference;
+
 public class PIDF implements Controller {
     private PIDFCoefficients coefficients;
     private double error, target, current;
@@ -78,10 +80,14 @@ public class PIDF implements Controller {
         ArrayList<Double> acm = new ArrayList<>();
 
         for (Supplier<Double> err : errors) {
-            acm.add(err.get() * Math.signum(err.get()));
+            acm.add(Math.sqrt(Math.pow(err.get(), 2)));
         }
 
         return LazyMath.average(acm);
+    }
+
+    public PIDFCoefficients getCoefficients() {
+        return coefficients;
     }
 
     public ArrayList<Double> getErrors() {
@@ -99,8 +105,13 @@ public class PIDF implements Controller {
      */
     public double calculate(double... args) {
         double currentError = args[0] - args[1];
+
+        error = currentError;
+
         target = args[0];
         current = args[1];
+
+        errors.add(() -> error);
 
         average = getAverage();
         if (average <= 7 && average >= -7) {
@@ -116,10 +127,43 @@ public class PIDF implements Controller {
         derivative = currentError - lastError;
         correction = (currentError * coefficients.P) + (integral * coefficients.I) + (derivative * coefficients.D) + (target * coefficients.F) + avgCorrection;
 
+        lastError = error;
+
         return correction;
     }
 
     public void editCoefficients(PIDFCoefficients newCoefficients) {
         coefficients = newCoefficients;
+    }
+
+    /**
+     * Target and Current angle, same as calculate(), works in Radians. Accounts for Geometry.
+     * @param tAngle Target Angle --> (IN RADIANS)
+     * @param cAngle Current Angle --> (IN RADIANS)
+     * @return the output of the PIDF
+     */
+    public double angles(double tAngle, double cAngle) {
+        double err = getSmallestAngleDifference(tAngle, cAngle);
+
+        target = tAngle;
+        current = cAngle;
+
+        average = getAverage();
+        if (average <= 7 && average >= -7) {
+            integral = 0;
+        }
+
+        avgCorrection = LazyMath.lerp(avgCorrection, (average * kA), 0.8);
+        if ((avgCorrection - average * kA) < 0.2) {
+            avgCorrection = average * kA;
+        }
+
+        integral += err;
+        derivative = err - lastError;
+        correction = (err * coefficients.P) + (integral * coefficients.I) + (derivative * coefficients.D) + (target * coefficients.F) + avgCorrection;
+
+        lastError = error;
+
+        return correction;
     }
 }

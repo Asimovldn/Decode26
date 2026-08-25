@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Math.LazyMath;
 import org.firstinspires.ftc.teamcode.Math.PID;
 import org.firstinspires.ftc.teamcode.Math.PIDF;
 
@@ -24,15 +25,21 @@ public class Shooter {
     private Mecanum mecanum;
     private PIDF pidShooter;
     private State state;
-    private double target, current;
+    private double target, current, lastPIDF;
     private double multiplier;
     private ElapsedTime timer;
     private Intake intake;
+    private boolean useServo;
 
 
-    public Shooter(HardwareMap hm, Follower follower, Intake intake) {
+    public Shooter(HardwareMap hm, Follower follower, Intake intake, boolean useServo) {
         motor = hm.get(DcMotorEx.class, "shooter");
-        servo = hm.get(Servo.class, "doorServo");
+        if (useServo) {
+            servo = hm.get(Servo.class, "doorServo");
+        }
+
+        this.useServo = useServo;
+
         drive = follower;
         mecanum = (Mecanum) drive.drivetrain;
 
@@ -45,7 +52,7 @@ public class Shooter {
 
         multiplier = 8;
 
-        pidShooter = new PIDF(new PIDFCoefficients(0.7, 0.01, 0.5, 0.05), 0.001);
+        pidShooter = new PIDF(new PIDFCoefficients(1.5, 0.01, 1.1, 0.3));
     }
 
 
@@ -77,6 +84,7 @@ public class Shooter {
     public double getCurrent() { return current; }
 
     public void switchServo() {
+        if (!useServo) return;
         if (servo.getPosition() == 1) {
             servo.setPosition(0);
         } else {
@@ -85,6 +93,7 @@ public class Shooter {
     }
 
     public String getServoPosition() {
+        if (!useServo) return "No Servo";
         return servo.getPosition() == 1 ? "Open" : "Closed";
     }
 
@@ -95,48 +104,35 @@ public class Shooter {
     public Shooter update() {
         current = motor.getVelocity(AngleUnit.DEGREES);
 
-        if (state == State.SHOOTING) {
-            target = 360 * 7;
-        } else if (state == State.REVERSE) {
-            target = -360 * 7;
-        } else {
-            target = 0;
-        }
 
-        motor.setVelocity(pidShooter.calculate(getCurrent(), getTarget()), AngleUnit.DEGREES);
+        lastPIDF = pidShooter.calculate(target, current);
+
+        motor.setVelocity(target + lastPIDF, AngleUnit.DEGREES);
+
         return this;
     }
 
     public double calculatePIDF() {
-        return pidShooter.calculate(getCurrent(), getTarget());
+        return lastPIDF;
     }
 
     public double getVelocity() {
-        return current;
+        return Math.abs(current);
     }
 
     public void switchMultiplier() {
-        if (multiplier < 12) {
-            multiplier = 12;
+        if (multiplier < 6) {
+            multiplier = 6;
         } else {
-            multiplier = 8;
+            multiplier = 3;
         }
     }
 
     public void usingGamepad(Gamepad gamepad2) {
-        current = motor.getVelocity();
+        double m = LazyMath.lerp(420, 510, gamepad2.left_trigger); // 540 max, overkill!
+        // 420 min.
 
-        target = 360 * gamepad2.left_stick_y * multiplier;
-
-        if (target > 360) {
-            state = State.SHOOTING;
-        } else if (target < -360) {
-            state = State.REVERSE;
-        } else {
-            state = State.HOLD;
-        }
-
-        motor.setVelocity(target + pidShooter.calculate(current, target), AngleUnit.DEGREES);
+        target = m * gamepad2.left_stick_y * (1 - Math.pow(gamepad2.right_trigger, 2));
     }
 
     public void activateSlowMode() {
@@ -157,7 +153,7 @@ public class Shooter {
             state = State.HOLD;
         }
 
-        motor.setVelocity(target + pidShooter.calculate(current, target), AngleUnit.DEGREES);
+        motor.setVelocity(target + pidShooter.calculate(target, current), AngleUnit.DEGREES);
     }
 
     public void quickShoot() {
