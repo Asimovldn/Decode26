@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Math.LazyMath;
 import org.firstinspires.ftc.teamcode.Math.PID;
+import org.firstinspires.ftc.teamcode.Systems.Camera;
 import org.firstinspires.ftc.teamcode.Systems.ControlHandler;
 import org.firstinspires.ftc.teamcode.Systems.Intake;
 import org.firstinspires.ftc.teamcode.Systems.Shooter;
@@ -37,11 +38,11 @@ import java.util.ArrayList;
 public class Kronos3 extends LinearOpMode {
     DcMotorEx blockMotor;
     Follower follower;
-    Limelight3A cam;
+    Camera cam;
     boolean useCam = false;
     boolean aligning;
 
-    private boolean isRobotCentric = true, isRedAlliance = true;
+    private boolean isRobotCentric = true, isRedAlliance = true, isCameraOn = true;
 
     private BlockStates block;
 
@@ -80,14 +81,21 @@ public class Kronos3 extends LinearOpMode {
         controlA = new ControlHandler(hardwareMap, gamepad1);
         controlB = new ControlHandler(hardwareMap, gamepad2);
 
-        cam = hardwareMap.tryGet(Limelight3A.class, "limelight");
-        if (cam == null) {
+        if (hardwareMap.tryGet(Limelight3A.class, "limelight") == null) {
             useCam = false;
         }
+
+        cam = new Camera(hardwareMap);
+
+        Lock = new PID(new PIDCoefficients(0.2, 0.0085, 0.05));
+        Lock.normalize();
+        Lock.setRange(-10, 10);
 
         velocities = new ArrayList<>();
 
         follower.setStartingPose(new Pose());
+
+        TARGET_TAG = 20;
 
         tele = PanelsTelemetry.INSTANCE.getTelemetry();
 
@@ -98,8 +106,10 @@ public class Kronos3 extends LinearOpMode {
 
         controlA.Add(ControlHandler.Buttons.Y, this::switchAlliance)
                 .onPressed();
-        controlA.Add(ControlHandler.Buttons.RIGHTSTICK, this::toggleAlign)
+        controlA.Add(ControlHandler.Buttons.B, this::toggleAlign)
                 .onPressed();
+
+        cam.start();
 
         intake = new Intake(hardwareMap, follower);
         shooter = new Shooter(hardwareMap, follower, intake, false);
@@ -107,6 +117,20 @@ public class Kronos3 extends LinearOpMode {
         clock = new ElapsedTime();
 
         block = BlockStates.ZERO;
+
+        while (opModeInInit()) {
+            if (gamepad1.leftBumperWasPressed()) {
+                if (TARGET_TAG == 20) {
+                    TARGET_TAG = 24;
+                } else {
+                    TARGET_TAG = 20;
+                }
+            }
+
+            telemetry.addLine("Current Alliance: " + (TARGET_TAG == 24 ? "Red" : "Blue"));
+            telemetry.update();
+        }
+
 
         waitForStart();
 
@@ -119,6 +143,22 @@ public class Kronos3 extends LinearOpMode {
             forward = -gamepad1.left_stick_y;
             strafe = -gamepad1.left_stick_x;
             turn = -gamepad1.right_stick_x;
+
+            double toDebug = 0;
+            if (aligning) {
+                if (!isCameraOn) {
+                    cam.start();
+                    isCameraOn = true;
+                }
+
+                 Lock.setError(cam.get(TARGET_TAG));
+                 turn = -Lock.calculate();
+                 toDebug = turn;
+            }
+            if (isCameraOn && !aligning) {
+                isCameraOn = false;
+                cam.stop();
+            }
 
             follower.setTeleOpDrive(forward, strafe, turn, isRobotCentric);
 
@@ -156,7 +196,7 @@ public class Kronos3 extends LinearOpMode {
                 case BLOCKING:
                     blockMotor.setPower(-1);
 
-                    if (elapsed >= 100) {
+                    if (elapsed >= 275) {
                         block = BlockStates.DEBOUCING;
                         last = clock.milliseconds();
                     }
@@ -172,8 +212,6 @@ public class Kronos3 extends LinearOpMode {
                     break;
             }
 
-
-
             controlA.update();
             controlB.update();
 
@@ -182,6 +220,7 @@ public class Kronos3 extends LinearOpMode {
             telemetry.addData("Current Shooter StdDev: ", stdDev);
             telemetry.addData("Current Shooter Speed: ", shooter.getVelocity());
             telemetry.addData("Current Intake Speed: ", intake.getCurrent());
+            telemetry.addData("Current Limelight PID: ", toDebug);
 
             follower.update();
             telemetry.update();
@@ -195,36 +234,6 @@ public class Kronos3 extends LinearOpMode {
 
     private void switchCentric() {
         isRobotCentric = !isRobotCentric;
-    }
-
-    private void initCamera() {
-        if (!useCam) return;
-
-        cam.pipelineSwitch(0);
-        cam.start();
-    }
-
-    @Nullable
-    private Double fromCamera() {
-        if (!useCam) return null;
-
-        LLResult res = cam.getLatestResult();
-        if (res == null || !res.isValid()) {
-            return null;
-        }
-
-        LLResultTypes.FiducialResult target = null;
-
-        for (LLResultTypes.FiducialResult fiducial :
-                res.getFiducialResults()) {
-            if (fiducial.getFiducialId() == TARGET_TAG) {
-                target = fiducial;
-                break;
-            }
-        }
-
-        assert target != null : "Target fromCamera() não identificado/nulo.";
-        return target.getTargetXDegrees();
     }
 
     public void switchAlliance() { isRedAlliance = !isRedAlliance; }

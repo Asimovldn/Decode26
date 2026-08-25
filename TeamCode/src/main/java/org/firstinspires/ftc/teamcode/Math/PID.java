@@ -122,12 +122,14 @@ public class PID implements Controller {
             outputs.remove(0);
         }
 
-        if (maxOutput < outputs.get(outputs.size() - 1)) {
-            maxOutput = outputs.get(outputs.size() - 1);
-        }
+        if (!outputs.isEmpty()) {
+            if (maxOutput < outputs.get(outputs.size() - 1)) {
+                maxOutput = outputs.get(outputs.size() - 1);
+            }
 
-        if (minOutput > outputs.get(outputs.size() - 1)) {
-            minOutput = outputs.get(outputs.size() - 1);
+            if (minOutput > outputs.get(outputs.size() - 1)) {
+                minOutput = outputs.get(outputs.size() - 1);
+            }
         }
 
         average = getAverage();

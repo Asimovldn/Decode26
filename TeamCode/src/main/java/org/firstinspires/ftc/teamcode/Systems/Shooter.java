@@ -129,8 +129,8 @@ public class Shooter {
     }
 
     public void usingGamepad(Gamepad gamepad2) {
-        double m = LazyMath.lerp(420, 510, gamepad2.left_trigger); // 540 max, overkill!
-        // 420 min.
+        double m = LazyMath.lerp(410, 515, gamepad2.left_trigger); // 540 max, overkill!
+        // 410 min.
 
         target = m * gamepad2.left_stick_y * (1 - Math.pow(gamepad2.right_trigger, 2));
     }
