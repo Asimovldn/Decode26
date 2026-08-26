@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.TeleOpModes;
 
+import static java.lang.Math.toDegrees;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
@@ -13,6 +15,7 @@ import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.Math.LazyMath;
 import org.firstinspires.ftc.teamcode.Math.PID;
 import org.firstinspires.ftc.teamcode.Systems.Camera;
@@ -83,13 +86,14 @@ public class Kronos3 extends LinearOpMode {
 
         if (hardwareMap.tryGet(Limelight3A.class, "limelight") == null) {
             useCam = false;
+        } else {
+            useCam = true;
         }
 
         cam = new Camera(hardwareMap);
 
-        Lock = new PID(new PIDCoefficients(0.2, 0.0085, 0.05));
-        Lock.normalize();
-        Lock.setRange(-10, 10);
+        Lock = new PID(new PIDCoefficients(0.4, 0.009, 0.1));
+        Lock.setRange(-15, 15);
 
         velocities = new ArrayList<>();
 
@@ -128,9 +132,16 @@ public class Kronos3 extends LinearOpMode {
             }
 
             telemetry.addLine("Current Alliance: " + (TARGET_TAG == 24 ? "Red" : "Blue"));
+            telemetry.addLine("Press LEFT BUMPER to Change");
             telemetry.update();
         }
 
+        Pose start = fromCamera();
+
+        if (start != null) {
+            follower.setStartingPose(start);
+            follower.setPose(start);
+        }
 
         waitForStart();
 
@@ -151,9 +162,17 @@ public class Kronos3 extends LinearOpMode {
                     isCameraOn = true;
                 }
 
-                 Lock.setError(cam.get(TARGET_TAG));
+                 Lock.setError(cam.getX(TARGET_TAG, -toDegrees(follower.getHeading())));
                  turn = -Lock.calculate();
                  toDebug = turn;
+
+                 if (Math.abs(toDebug) <= 0.05) {
+                     Pose pos = fromCamera();
+
+                     if (pos != null) {
+                         follower.setPose(pos);
+                     }
+                 }
             }
             if (isCameraOn && !aligning) {
                 isCameraOn = false;
@@ -215,12 +234,13 @@ public class Kronos3 extends LinearOpMode {
             controlA.update();
             controlB.update();
 
-            telemetry.addData("Current Block State: ", block.toString());
-            telemetry.addData("Current Debounce: %.2f s", elapsed / 1000);
-            telemetry.addData("Current Shooter StdDev: ", stdDev);
+            telemetry.addData("Current Debounce: ", String.valueOf(elapsed / 1000) + "s");
             telemetry.addData("Current Shooter Speed: ", shooter.getVelocity());
             telemetry.addData("Current Intake Speed: ", intake.getCurrent());
-            telemetry.addData("Current Limelight PID: ", toDebug);
+            telemetry.addData("Current Limelight P: ", toDebug);
+            telemetry.addData("Current Limelight D: ", Lock.derivative);
+            telemetry.addData("Current Limelight I: ", Lock.integral);
+            telemetry.addLine("Current Pose: " + follower.getPose().toString());
 
             follower.update();
             telemetry.update();
@@ -239,4 +259,19 @@ public class Kronos3 extends LinearOpMode {
     public void switchAlliance() { isRedAlliance = !isRedAlliance; }
 
     public void toggleAlign() { aligning = !aligning; }
+
+    @Nullable
+    public Pose fromCamera() {
+        Pose3D current = cam.getPose(TARGET_TAG, follower.getHeading());
+
+        if (current == null) {
+            return null;
+        }
+
+        return new Pose(current.getPosition().x, current.getPosition().y, current.getOrientation().getYaw(), FTCCoordinates.INSTANCE).getAsCoordinateSystem(PedroCoordinates.INSTANCE);
+    }
+
+    public void resetCamera() {
+        cam.stop();
+    }
 }

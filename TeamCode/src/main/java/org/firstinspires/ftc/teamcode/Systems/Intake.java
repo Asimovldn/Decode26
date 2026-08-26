@@ -104,6 +104,10 @@ public class Intake {
         target = 360 * -gamepad2.right_stick_y * 1;
     }
 
+    public void quickShoot() {
+        target = -360;
+    }
+
     public void usingTrigger(Gamepad gamepad2) {
         current = motor.getVelocity(AngleUnit.DEGREES);
 

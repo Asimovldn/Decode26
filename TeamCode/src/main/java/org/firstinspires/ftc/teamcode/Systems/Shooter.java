@@ -129,8 +129,8 @@ public class Shooter {
     }
 
     public void usingGamepad(Gamepad gamepad2) {
-        double m = LazyMath.lerp(410, 515, gamepad2.left_trigger); // 540 max, overkill!
-        // 410 min.
+        double m = LazyMath.lerp(365, 490, gamepad2.left_trigger); // 540 max, overkill!
+        // 360 min.
 
         target = m * gamepad2.left_stick_y * (1 - Math.pow(gamepad2.right_trigger, 2));
     }
@@ -138,6 +138,10 @@ public class Shooter {
     public void activateSlowMode() {
         multiplier = 1.5;
         pidShooter.editCoefficients(new PIDFCoefficients(0.5, 0.001, 0.3, 0.03));
+    }
+
+    public void quickShoot() {
+        target = 410;
     }
 
     public void usingTrigger(Gamepad gamepad2) {
@@ -154,26 +158,5 @@ public class Shooter {
         }
 
         motor.setVelocity(target + pidShooter.calculate(target, current), AngleUnit.DEGREES);
-    }
-
-    public void quickShoot() {
-        timer.reset();
-        while (timer.time() < 3) {
-            drive.setTeleOpDrive(0, 0, 0);
-        }
-
-        target = 360 * 3;
-        timer.reset();
-        intake.setState(Intake.State.INTAKE);
-
-        while (timer.time() < 3) update();
-
-        intake.setState(Intake.State.HOLD);
-        timer.reset();
-        target = 0;
-
-        while (timer.time() < 2) update();
-
-        return;
     }
 }

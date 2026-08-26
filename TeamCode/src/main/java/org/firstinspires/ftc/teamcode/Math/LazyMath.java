@@ -143,6 +143,15 @@ public class LazyMath {
         return Math.sqrt(variance);
     }
 
+    public static double angleDifference(double current, double previous) {
+        double difference = current - previous;
+
+        while (difference > 180) difference -= 360;
+        while (difference < -180) difference += 360;
+
+        return difference;
+    }
+
     public static double saturation(double x, double gain) {
         return (1 - Math.exp(-gain * x));
     }
